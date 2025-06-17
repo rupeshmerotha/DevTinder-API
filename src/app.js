@@ -4,14 +4,23 @@ const {adminAuth} = require("./middleware/auth")
 const connectDB = require("./config/database")
 const User = require("./models/user")
 const validator = require("validator")
-
+const bcrypt = require("bcrypt")
 app.use(express.json())
 
 app.post("/signup", async (req,res)=>{
     try{
+        // firstly validate sigup data 
         const isValidEmail = validator.isEmail(req.body.emailId)
         if(!isValidEmail) return res.status(400).send("Please enter valid Email Id")
-        const user = new User(req.body);
+
+        // encrpyt the password
+        const {firstName,lastName,skills,about,gender,age,password,emailId,photoUrl} = req.body
+        const hashedPassword = await bcrypt.hash(password,10)
+
+
+        const user = new User(
+            {firstName,lastName,skills,about,gender,age,password: hashedPassword,emailId,photoUrl}
+        );
         await user.save();
         res.send(user.firstName + " Signed Up Successfully")
     }
@@ -20,6 +29,27 @@ app.post("/signup", async (req,res)=>{
     }
     
 })
+
+app.post("/login", async (req, res) => {
+  try {
+    const { emailId, password } = req.body;
+
+    const user = await User.findOne({ emailId });
+    if (!user) {
+      return res.status(400).send("Invalid credentials");
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).send("Invalid credentials");
+    }
+
+    res.send(`Mr.${user.firstName} logged in successfully`);
+  } catch (err) {
+    res.status(500).send("Server error while logging in");
+  }
+});
+
 
 app.get("/feed", async (req,res)=>{
     try{
