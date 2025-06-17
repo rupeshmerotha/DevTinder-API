@@ -3,11 +3,14 @@ const app = express()
 const {adminAuth} = require("./middleware/auth")
 const connectDB = require("./config/database")
 const User = require("./models/user")
+const validator = require("validator")
 
 app.use(express.json())
 
 app.post("/signup", async (req,res)=>{
     try{
+        const isValidEmail = validator.isEmail(req.body.emailId)
+        if(!isValidEmail) return res.status(400).send("Please enter valid Email Id")
         const user = new User(req.body);
         await user.save();
         res.send(user.firstName + " Signed Up Successfully")
@@ -41,12 +44,15 @@ app.delete("/user", async (req,res)=>{
     
 })
 
-app.patch("/user", async (req,res)=>{
+app.patch("/user/:userId", async (req,res)=>{
     try{
-        const userId= req.body._id
+        const userId= req.params.userId
         const data = req.body
+        const allowedUpdates = ["firstName" , "lastName" ,"skills","about","photoUrl","age","password"]
+        const isUpdateAllowed = Object.keys(data).every((k)=> allowedUpdates.includes(k));
+        if(!isUpdateAllowed) return  res.status(400).send("Updating EmailId is not allowed and adding random fields is not allowed")
         const user = await User.findByIdAndUpdate(userId,data)
-        res.send("User data updated Successfully")
+         return res.send("User data updated Successfully")
     }
     catch(err){
         res.status(400).send("Unable to update user data")
