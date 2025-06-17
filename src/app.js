@@ -18,6 +18,42 @@ app.post("/signup", async (req,res)=>{
     
 })
 
+app.get("/feed", async (req,res)=>{
+    try{
+        const allUsers = await User.find()
+        res.send(allUsers)
+    }
+    catch(err){
+        res.status(400).send("Unable to get users")
+    }
+    
+})
+
+app.delete("/user", async (req,res)=>{
+    try{
+        const userId= req.body._id
+        const users = await User.findByIdAndDelete(userId)
+        res.send("User deleted Successfully")
+    }
+    catch(err){
+        res.status(400).send("Unable to delete users")
+    }
+    
+})
+
+app.patch("/user", async (req,res)=>{
+    try{
+        const userId= req.body._id
+        const data = req.body
+        const user = await User.findByIdAndUpdate(userId,data)
+        res.send("User data updated Successfully")
+    }
+    catch(err){
+        res.status(400).send("Unable to update user data")
+    }
+    
+})
+
 
 
 
