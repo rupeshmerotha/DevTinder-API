@@ -1,11 +1,15 @@
 const express = require("express")
 const app = express()
-const {adminAuth} = require("./middleware/auth")
+const userAuth = require("./middleware/auth")
 const connectDB = require("./config/database")
 const User = require("./models/user")
 const validator = require("validator")
 const bcrypt = require("bcrypt")
 app.use(express.json())
+const jwt = require("jsonwebtoken")
+const cookieParser = require("cookie-parser")
+app.use(cookieParser())
+
 
 app.post("/signup", async (req,res)=>{
     try{
@@ -30,20 +34,43 @@ app.post("/signup", async (req,res)=>{
     
 })
 
+
 app.post("/login", async (req, res) => {
   try {
+
+    // email password nikaala request ki body se
     const { emailId, password } = req.body;
 
+    // check kiya ki wo email wala user hain ki nahi 
     const user = await User.findOne({ emailId });
+
+    // agar user nahi mila invalid credentials hain matlab
     if (!user) {
       return res.status(400).send("Invalid credentials");
     }
 
+    /* agar user mil gaya to check kiya ki mile hue user ka 
+       password, entered user ke password se match kiya ya nahi */
     const isMatch = await bcrypt.compare(password, user.password);
+
+    // agar password match nahi means invalid credentials
     if (!isMatch) {
       return res.status(400).send("Invalid credentials");
     }
 
+    // agar password bhi match karta hain -> log in successfull
+    // matlab ab jwt banakar bhejna padega re baba
+
+    // create a jwt token
+    const token = jwt.sign({ id: user._id }, "secretkey", { expiresIn: "10d" });
+ 
+    // send token wrapped into a cookie
+    res.cookie("token", token, {
+      httpOnly: true, // Can't be accessed by JS on frontend
+      maxAge: 10 * 24 * 60 * 60 * 1000, // 10 day
+    });
+
+    // ab response bhejo client ko iske saath hi cookie autosent ho jayega
     res.send(`Mr.${user.firstName} logged in successfully`);
   } catch (err) {
     res.status(500).send("Server error while logging in");
@@ -51,7 +78,21 @@ app.post("/login", async (req, res) => {
 });
 
 
-app.get("/feed", async (req,res)=>{
+
+
+app.get("/profile", userAuth , async (req,res)=>{
+    try{
+        const user = await User.findById(req._id)
+        return res.json(user);
+    }
+    catch(err){
+        res.status(400).send("Unable to fetch your profile")
+    }
+    
+})
+
+
+app.get("/feed", userAuth, async (req,res)=>{
     try{
         const allUsers = await User.find()
         res.send(allUsers)
@@ -62,19 +103,8 @@ app.get("/feed", async (req,res)=>{
     
 })
 
-app.delete("/user", async (req,res)=>{
-    try{
-        const userId= req.body._id
-        const users = await User.findByIdAndDelete(userId)
-        res.send("User deleted Successfully")
-    }
-    catch(err){
-        res.status(400).send("Unable to delete users")
-    }
-    
-})
 
-app.patch("/user/:userId", async (req,res)=>{
+app.patch("/user/:userId", userAuth, async (req,res)=>{
     try{
         const userId= req.params.userId
         const data = req.body
@@ -90,6 +120,17 @@ app.patch("/user/:userId", async (req,res)=>{
     
 })
 
+app.post("/connectionRequest/:userId", userAuth, async (req,res)=>{
+    try{
+        const toUser = await User.findById(req.params.userId)
+        const fromUser = await User.findById(req._id)
+        res.send(fromUser.firstName + " sent connection request to " + toUser.firstName)
+    }
+    catch(err){
+        res.status(400).send("Unable to send connection request")
+    }
+    
+})
 
 
 
