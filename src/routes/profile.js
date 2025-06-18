@@ -24,7 +24,7 @@ profileRouter.patch("/profile/edit", userAuth, async (req, res) => {
       return res.status(400).send("Updating emailId or adding random fields is not allowed");
     }
     const updatedUser = await User.findByIdAndUpdate(req._id, data);
-    res.send("User data updated successfully");
+    res.send( updatedUser.firstName + "'s data updated successfully");
   } catch (err) {
     res.status(400).send("Unable to update user data");
   }
